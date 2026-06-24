@@ -1,0 +1,49 @@
+<!DOCTYPE html><html lang="fi"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Ovimerkki</title>
+<style>
+ body{font-family:system-ui,sans-serif;margin:0;background:#111;color:#fff;text-align:center;
+  display:flex;flex-direction:column;min-height:100vh;justify-content:center;gap:14px;padding:16px;box-sizing:border-box}
+ h1{font-size:22px;margin:0 0 6px}
+ button{font-size:26px;font-weight:700;border:0;border-radius:18px;padding:26px;color:#111;cursor:pointer}
+ .v{background:#22c55e}.b{background:#ef4444;color:#fff}.t{background:#eab308}
+ #s{font-size:15px;color:#aaa;min-height:22px}
+ .conn{background:#334155;color:#fff;font-size:16px;padding:14px}
+</style></head><body>
+<h1>🚪 Ovimerkki</h1>
+<button class="v" onclick="send('v')">🟢 VAPAA</button>
+<button class="b" onclick="send('b')">🔴 VARATTU</button>
+<button class="t" onclick="send('t')">🟡 TENTATIVE</button>
+<button class="conn" onclick="pair()">🔗 Yhdistä merkki (1. kerta)</button>
+<div id="s">Valmis</div>
+<script>
+const SVC='0000ffe0-0000-1000-8000-00805f9b34fb',CHR='0000ffe1-0000-1000-8000-00805f9b34fb';
+let dev=null;
+const S=m=>document.getElementById('s').textContent=m;
+async function pick(){
+ dev=await navigator.bluetooth.requestDevice({filters:[{name:'OviMerkki'}],optionalServices:[SVC]});
+ return dev;
+}
+async function getDev(){
+ if(dev)return dev;
+ if(navigator.bluetooth.getDevices){
+  const ds=await navigator.bluetooth.getDevices();
+  dev=ds.find(d=>d.name==='OviMerkki');
+  if(dev)return dev;
+ }
+ return await pick();
+}
+async function pair(){try{S('Valitse OviMerkki...');await pick();S('Yhdistetty! Voit nyt käyttää nappeja.');}catch(e){S('Peruttu: '+e.message)}}
+async function send(cmd){
+ try{
+  S('Yhdistetään...');
+  const d=await getDev();
+  const g=await d.gatt.connect();
+  const sv=await g.getPrimaryService(SVC);
+  const ch=await sv.getCharacteristic(CHR);
+  await ch.writeValue(new TextEncoder().encode(cmd));
+  S('✓ Lähetetty: '+({v:'VAPAA',b:'VARATTU',t:'TENTATIVE'}[cmd]));
+  setTimeout(()=>{try{g.disconnect()}catch(e){}},400);
+ }catch(e){S('Virhe: '+e.message+' — paina "Yhdistä merkki"')}
+}
+</script></body></html>
